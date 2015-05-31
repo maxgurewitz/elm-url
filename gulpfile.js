@@ -1,32 +1,33 @@
+var browserify = require('browserify');
 var gulp = require('gulp');
+var source = require('vinyl-source-stream');
+var del = require('del');
+var rename = require('gulp-rename');
 var shell = require('gulp-shell');
-var elm = require('gulp-elm');
-var settings = require('./settings');
 
-function logError (err) {
-  gutil.log(err.message);
-}
+var nativeSrc = __dirname + '/native-src/';
+var nativeDst = __dirname + '/src/Native/';
+var src = '/src/';
+var bundleName = 'Url.js';
 
-gulp.task('cleanJS', shell.task([
-  'rm ' + __dirname + settings.dist.js + '*.js'
-], { ignoreErrors: true }));
-
-gulp.task('build', ['installElm', 'install', 'elm-init']);
-
-gulp.task('install', shell.task(['npm i']));
-
-gulp.task('installElm', shell.task(['npm -g elm']));
-
-gulp.task('elm-init', elm.init);
-
-gulp.task('elm', ['cleanJS'], function () {
-  gulp.src(__dirname + settings.src.elm)
-    .pipe(elm().on('error', logError))
-    .pipe(gulp.dest(__dirname + settings.dist.js))
+gulp.task('clean-native', function (cb) {
+  del(nativeDst + '*', cb);
 });
+
+gulp.task('native-src', ['clean-native'], function () {
+  var bundle = browserify(nativeSrc).bundle();
+  bundle
+    .pipe(source(nativeSrc))
+    .pipe(rename(bundleName))
+    .pipe(gulp.dest(nativeDst));
+});
+
+gulp.task('elm-make', shell.task(['elm-make']));
+
 
 gulp.task('watch', function () {
-  gulp.watch(__dirname + settings.src.elm, ['elm']);
+  gulp.watch(__dirname + src, ['elm-make']);
+  gulp.watch(__dirname + nativeSrc, ['native-src']);
 });
 
-gulp.task('default', ['elm', 'watch']);
+gulp.task('default', ['native-src', 'elm-make', 'watch']);
